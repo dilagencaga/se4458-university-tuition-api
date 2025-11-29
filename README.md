@@ -136,4 +136,4 @@ POST	/payments	Add payment
 
 Swagger UI automatically loads at:
 
-➡ https://localhost:7026/swagger/index.htm
+➡ https://localhost:7243/swagger/index.html
