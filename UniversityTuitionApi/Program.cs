@@ -1,0 +1,106 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using UniversityTuitionApi.Data;
+using UniversityTuitionApi.config;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// DbContext (PostgreSQL)
+builder.Services.AddDbContext<UniversityContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// JwtSettings'i config'ten oku
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+builder.Services.Configure<JwtSettings>(jwtSection);
+var jwtSettings = jwtSection.Get<JwtSettings>();
+
+// Authentication (JWT Bearer)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
+    };
+});
+
+// Authorization
+builder.Services.AddAuthorization();
+
+// Controllers
+builder.Services.AddControllers();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "UniversityTuitionApi",
+        Version = "v1"
+    });
+
+    // 🔐 HTTP Bearer (JWT) şeması
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "JWT token'ı şu formatta girin: Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = "Bearer"
+        }
+    };
+
+    // Şemayı tanımla
+    c.AddSecurityDefinition("Bearer", securityScheme);
+
+    // Tüm [Authorize] endpoint'lerine uygula
+    var securityRequirement = new OpenApiSecurityRequirement
+    {
+        { securityScheme, new string[] { } }
+    };
+    c.AddSecurityRequirement(securityRequirement);
+});
+
+var app = builder.Build();
+
+// Uygulama açılırken veritabanını otomatik oluştur
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<UniversityContext>();
+    db.Database.EnsureCreated();
+}
+
+// Swagger UI
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthentication();   // 🔐 önce authentication
+app.UseAuthorization();    // sonra authorization
+
+app.MapControllers();
+
+app.Run();
