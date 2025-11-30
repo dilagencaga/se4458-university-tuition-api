@@ -1,6 +1,10 @@
 # University-Tuition-Api
 University Tuition API – SE4458 Midterm Project
 
+for the video: https://youtu.be/sRjQwHiE_Cs
+
+for the photos: büyük sistem
+
 1. Project Source Code
 GitHub Repository:
 https://github.com/dilagencaga/se4458-university-tuition-api
