@@ -1,15 +1,15 @@
 # University-Tuition-Api
 University Tuition API – SE4458 Midterm Project
 
-for the video: https://youtu.be/sRjQwHiE_Cs
-
+for the video: https://www.youtube.com/watch?v=A7riSr6brjs
 for the photos: [büyük sistem](https://1drv.ms/f/c/af129e41af93f6e2/IgCVql58P6sgQbzT6VxR9FS3AZjvJVCq_S6qnnFDr-3SlAI?e=xMFEVQ)
 
 1. Project Source Code
 GitHub Repository:
 https://github.com/dilagencaga/se4458-university-tuition-api
+https://github.com/dilagencaga/se4458-university-tuition-api.git
 
-2. Project Description
+3. Project Description
 
 This project is a university tuition management system built with .NET 8 Web API.
 It contains two main components:
