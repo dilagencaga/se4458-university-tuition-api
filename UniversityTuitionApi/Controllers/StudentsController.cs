@@ -1,5 +1,7 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UniversityTuitionApi.Data;
@@ -86,6 +88,62 @@ namespace UniversityTuitionApi.Controllers
                 return NotFound();
 
             return Ok(student);
+        }
+
+        // DELETE /api/v1/students/{studentNo}
+        // Açıklama:
+        //  - Sadece admin kullanıcı silebilir.
+        //  - Öğrenciyi silerken o öğrenciye ait tüm TuitionRecords ve Payments kayıtları da silinir (cascade).
+        [HttpDelete("{studentNo}")]
+        [Authorize] // giriş zorunlu
+        public async Task<IActionResult> DeleteStudent(string studentNo)
+        {
+            // 👉 Admin only kontrolü (JWT içindeki username)
+            var username = User.Identity?.Name;
+            if (!string.Equals(username, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid("Bu işlemi sadece admin kullanıcısı yapabilir.");
+            }
+
+            // Öğrenciyi bul
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.StudentNo == studentNo);
+
+            if (student == null)
+            {
+                return NotFound(new { message = "Öğrenci bulunamadı." });
+            }
+
+            // Öğrenciye ait tüm tuition kayıtları
+            var tuitions = await _context.TuitionRecords
+                .Where(t => t.StudentNo == studentNo)
+                .ToListAsync();
+
+            // Öğrenciye ait tüm payment kayıtları
+            var payments = await _context.Payments
+                .Where(p => p.StudentNo == studentNo)
+                .ToListAsync();
+
+            if (payments.Any())
+            {
+                _context.Payments.RemoveRange(payments);
+            }
+
+            if (tuitions.Any())
+            {
+                _context.TuitionRecords.RemoveRange(tuitions);
+            }
+
+            _context.Students.Remove(student);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Öğrenci, ilgili tüm tuition ve payment kayıtlarıyla birlikte silindi.",
+                deletedTuitionCount = tuitions.Count,
+                deletedPaymentCount = payments.Count
+            });
         }
     }
 }

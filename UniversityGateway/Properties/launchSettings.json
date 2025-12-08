@@ -22,7 +22,8 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "https://localhost:7125;http://localhost:5254",
+      //"launchUrl": "api/v1/students",
+      "applicationUrl": "https://localhost:7125/;http://localhost:5254",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

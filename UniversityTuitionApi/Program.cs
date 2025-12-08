@@ -1,10 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Threading.RateLimiting;
 using UniversityTuitionApi.Data;
 using UniversityTuitionApi.config;
+using UniversityTuitionApi.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +44,43 @@ builder.Services.AddAuthentication(options =>
 
 // Authorization
 builder.Services.AddAuthorization();
+
+// Business services
+builder.Services.AddScoped<ITuitionService, TuitionService>();
+
+// HTTP logging
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields =
+        HttpLoggingFields.RequestMethod |
+        HttpLoggingFields.RequestPath |
+        HttpLoggingFields.RequestHeaders |
+        HttpLoggingFields.ResponseStatusCode |
+        HttpLoggingFields.Duration;
+});
+
+// Global rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: key,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,                    // 1 dakikada 100 istek
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
+
 
 // Controllers
 builder.Services.AddControllers();
@@ -98,9 +140,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// HTTP logging ve rate limiting
+app.UseHttpLogging();
+app.UseRateLimiter();
+
 app.UseAuthentication();   // 🔐 önce authentication
 app.UseAuthorization();    // sonra authorization
 
 app.MapControllers();
 
 app.Run();
+

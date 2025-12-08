@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UniversityTuitionApi.Data;
 using UniversityTuitionApi.Models;
+using UniversityTuitionApi.Services;
 
 namespace UniversityTuitionApi.Controllers
 {
@@ -15,10 +16,24 @@ namespace UniversityTuitionApi.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly UniversityContext _context;
+        private readonly ITuitionService _tuitionService;
+        private readonly ILogger<PaymentsController> _logger;
 
-        public PaymentsController(UniversityContext context)
+        public PaymentsController(
+            UniversityContext context,
+            ITuitionService tuitionService,
+            ILogger<PaymentsController> logger)
         {
             _context = context;
+            _tuitionService = tuitionService;
+            _logger = logger;
+        }
+
+        public class PaymentRequest
+        {
+            public string StudentNo { get; set; } = null!;
+            public string Term { get; set; } = null!;
+            public decimal Amount { get; set; }
         }
 
         // POST /api/v1/Payments
@@ -29,7 +44,7 @@ namespace UniversityTuitionApi.Controllers
         //   "amount": 2500
         // }
         [HttpPost]
-        public async Task<IActionResult> CreatePayment([FromBody] Payment request)
+        public async Task<IActionResult> CreatePayment([FromBody] PaymentRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.StudentNo) ||
                 string.IsNullOrWhiteSpace(request.Term) ||
@@ -38,48 +53,36 @@ namespace UniversityTuitionApi.Controllers
                 return BadRequest("studentNo, term ve pozitif amount zorunlu.");
             }
 
-            var tuition = await _context.TuitionRecords
-                .FirstOrDefaultAsync(t =>
-                    t.StudentNo == request.StudentNo &&
-                    t.Term == request.Term);
+            var (success, message, remainingBalance) =
+                await _tuitionService.ApplyPaymentAsync(
+                    request.StudentNo,
+                    request.Term,
+                    request.Amount);
 
-            if (tuition == null)
+            if (!success)
             {
-                return NotFound("Bu öğrenci ve dönem için tuition kaydı yok.");
+                _logger.LogWarning(
+                    "Payment failed for {StudentNo} - {Term}: {Message}",
+                    request.StudentNo, request.Term, message);
+
+                return BadRequest(new
+                {
+                    status = "Error",
+                    message
+                });
             }
 
-            if (request.Amount > tuition.Balance)
-            {
-                // İstersen burada kısmi ödeme yapma diyebilirsin, ben uyarı verip izin veriyorum
-                request.Amount = tuition.Balance;
-            }
+            _logger.LogInformation(
+                "Payment succeeded for {StudentNo} - {Term}. Remaining balance: {Balance}",
+                request.StudentNo, request.Term, remainingBalance);
 
-            var payment = new Payment
-            {
-                StudentNo = request.StudentNo,
-                Term = request.Term,
-                Amount = request.Amount,
-                PaidAt = DateTime.UtcNow
-            };
-
-            _context.Payments.Add(payment);
-
-            tuition.Balance -= request.Amount;
-            if (tuition.Balance < 0) tuition.Balance = 0;
-
-            await _context.SaveChangesAsync();
-
-            var response = new
+            return Ok(new
             {
                 status = "Successful",
-                studentNo = tuition.StudentNo,
-                term = tuition.Term,
-                tuitionTotal = tuition.TuitionTotal,
-                remainingBalance = tuition.Balance,
-                paymentId = payment.Id
-            };
-
-            return Ok(response);
+                studentNo = request.StudentNo,
+                term = request.Term,
+                remainingBalance
+            });
         }
 
         // GET /api/v1/Payments/{studentNo}?page=1&pageSize=10
@@ -115,5 +118,20 @@ namespace UniversityTuitionApi.Controllers
 
             return Ok(result);
         }
+        // DELETE /api/v1/Payments/{paymentId}
+        [HttpDelete("{paymentId}")]
+        public async Task<IActionResult> DeletePayment(int paymentId)
+        {
+            var payment = await _context.Payments.FindAsync(paymentId);
+
+            if (payment == null)
+                return NotFound(new { message = "Ödeme kaydı bulunamadı." });
+
+            _context.Payments.Remove(payment);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Ödeme kaydı silindi." });
+        }
+
     }
 }
