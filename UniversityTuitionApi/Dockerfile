@@ -1,11 +1,27 @@
-# Build aşaması
+# =========================
+# BUILD STAGE
+# =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
-COPY . .
-RUN dotnet publish -c Release -o out
+WORKDIR /src
 
-# Run aşaması
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Tüm repo içeriğini kopyala
+COPY . .
+
+# Sadece UniversityTuitionApi projesini publish et
+RUN dotnet publish ./UniversityTuitionApi/UniversityTuitionApi.csproj -c Release -o /app/publish
+
+# =========================
+# RUNTIME STAGE
+# =========================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/out .
-ENTRYPOINT ["dotnet", "AddressBookApi.dll"]
+
+# Publish çıktısını kopyala
+COPY --from=build /app/publish .
+
+# Render'da container içindeki port
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+EXPOSE 8080
+
+# UniversityTuitionApi'yi başlat
+ENTRYPOINT ["dotnet", "UniversityTuitionApi.dll"]
