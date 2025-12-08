@@ -1,8 +1,7 @@
 # University-Tuition-Api
 University Tuition API – SE4458 Midterm Project
 
-for the video: https://youtu.be/sRjQwHiE_Cs
-
+for the video: https://www.youtube.com/watch?v=A7riSr6brjs
 for the photos: [büyük sistem](https://1drv.ms/f/c/af129e41af93f6e2/IgCVql58P6sgQbzT6VxR9FS3AZjvJVCq_S6qnnFDr-3SlAI?e=xMFEVQ)
 
 1. Project Source Code
