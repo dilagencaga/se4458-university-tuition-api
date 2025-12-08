@@ -7,8 +7,9 @@ for the photos: [büyük sistem](https://1drv.ms/f/c/af129e41af93f6e2/IgCVql58P6
 1. Project Source Code
 GitHub Repository:
 https://github.com/dilagencaga/se4458-university-tuition-api
+https://github.com/dilagencaga/se4458-university-tuition-api.git
 
-2. Project Description
+3. Project Description
 
 This project is a university tuition management system built with .NET 8 Web API.
 It contains two main components:
