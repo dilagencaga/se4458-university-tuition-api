@@ -132,13 +132,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Swagger UI
-if (app.Environment.IsDevelopment())
-{
+
     app.UseSwagger();
     app.UseSwaggerUI();
-}
 
-app.UseHttpsRedirection();
+
+//app.UseHttpsRedirection();
 
 // HTTP logging ve rate limiting
 app.UseHttpLogging();
